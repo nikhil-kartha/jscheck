@@ -1,0 +1,13 @@
+{
+    "ecmaFeatures": {
+        "blockBindings": true,
+        "forOf": true,
+        "jsx": true
+    },
+    "rules": {
+        //"checkparams": 1,
+        //"arrayexp": 1,
+        //"assignexp": 1
+        "analysis": 1
+    }
+}
