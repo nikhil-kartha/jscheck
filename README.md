@@ -4,3 +4,9 @@ Changes:
 2. Track assignments, this will be used to propagate values up the scope tree
 3. Methods like enyo.mixin and enyo.clone are treated as assignment operation.
 4. Record "comparison" operations.
+
+Depends on: ESLINT
+
+Usage:
+./report.sh jssample analysis.txt
+
