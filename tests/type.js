@@ -13,7 +13,7 @@ pulseconfig= {
 console.log(pulseconfig);
 
 /*
-x_type= Set of (
+pulseconfig_type= Set of (
                 OBJ.frequency.INT, 
                 OBJ.events.ARRAY.OBJ.name.STR, 
                 OBJ.events.ARRAY.OBJ.time.INT,
@@ -35,7 +35,7 @@ events_type= Set of (
 
 
 //Check if events_type is a subset of pulseconfig
-is_subset(events_type, pulseconfig)
+is_subset(events_type, pulseconfig_type)
 
 
 
