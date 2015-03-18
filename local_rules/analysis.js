@@ -163,6 +163,65 @@ module.exports = function(context) {
         }
     }
 
+    function extract_type_from_objectexp(node, properties, type, type_set){
+
+        // Process the properties array
+        //context.report(node,"\n\n++++++++ EXTRACT TYPE  FROM OBJECTEXP++++++:"+JSON.stringify(properties));
+
+        var default_type = type;
+        for (var i in properties){
+            var object = properties[i];
+
+            if (object.key && object.key.type==="Identifier"){
+                type= type + "." + object.key.name
+            }
+
+            if (object.value && object.value.type==="Literal"){
+                // this is the leaf, we got a full type
+                type = type + "." + "Literal";
+                type_set.push(type);
+                //type = default_type; // reset type
+            } 
+            else if (object.value && object.value.type==="ObjectExpression"){
+                type = type + "." + "OBJECT";
+                extract_type_from_objectexp(node, object.value.properties, type, type_set);
+            } 
+            else if (object.value && object.value.type==="ArrayExpression"){
+                type = type + "." + "ARRAY";
+                extract_type_from_arrayexp(node, object.value.elements, type, type_set);
+            }
+            type = default_type; //reset type
+        }
+    }
+
+    function extract_type_from_arrayexp(node, elements, type, type_set){
+        
+        // Process the elements array
+        //context.report(node,"\n\n++++++++ EXTRACT TYPE ++++++ FROM ARRAYEXP:"+JSON.stringify(elements));
+        
+        var default_type = type;
+        for (var i in elements){
+            var object = elements[i];
+
+            if (object.type==="Literal"){
+                // this is the leaf, we got a full type
+                type = type + "." + "Literal";
+                type_set.push(type);
+                //type = default_type; //reset type
+            } 
+            else if (object.type==="ObjectExpression"){
+                type = type + "." + "OBJECT";
+                extract_type_from_objectexp(node, object.properties, type, type_set);
+            } 
+            else if (object.type==="ArrayExpression"){
+                type = type + "." + "ARRAY";
+                extract_type_from_arrayexp(node, object.elements, type, type_set);
+            }
+            type = default_type; //reset type
+        }
+
+    }
+
     return {
 
         "Property": function(node){
@@ -171,13 +230,25 @@ module.exports = function(context) {
                     return undefined;
                 }
             }
-            //context.report(node, "......PROPERTY......: "+node.key.name+" : VALUETYPE: " +node.value.type);
             // We need to be working within scopes, this is just a crude approximation, to get things going.
             if(node.value.type === "ObjectExpression"){
                 //context.report(node, "......PROPERTY......: "+node.key.name+" : VALUETYPE: " +node.value.type);
                 var key, value;
                 key = node.key.name;
                 value = JSON.stringify(node.value.properties, ["key", "name", "value", "elements", "properties"]);
+                
+                var type_set=[];
+                var type="";
+                if(node.value.type === "ObjectExpression"){
+                    type="OBJECT"
+                    extract_type_from_objectexp(node, node.value.properties, type, type_set);
+                } 
+                else if( node.value.type === "ArrayExpression"){
+                    type="ARRAY";
+                    extract_type_from_arrayexp(node, node.value.elements, type, type_set);
+                }
+                context.report(node,"TYPEINFO:"+type_set);
+                
                 DICT[key]=value;
             }
         },
@@ -201,6 +272,7 @@ module.exports = function(context) {
                 //context.report(node,"type:"+x);
                 var x = node.body.body[i];
                 if (x.type === "VariableDeclaration"){
+                    //context.report(node,"\n\n++++++++ VariableDeclaration ++++++");
                     //varnames[x.declarations[0].id.name]=[];
                     var h = process_variable_declaration(node, x);
                     for(var key in h){
@@ -218,12 +290,10 @@ module.exports = function(context) {
                 }
 
                 if (x.type === "ExpressionStatement" && x.expression.type === "AssignmentExpression" && x.expression.operator === "="){
+                    //context.report(node,"\n\n++++++++ AssignmentExpression ++++++");
 
                     // nOpts.frequency = nOpts.delay;
                     if (x.expression.right.type === "MemberExpression"){
-                        //varnames[x.expression.left.object.name] = {
-                        //varnames[x.expression.left.object.name]={}
-                        //varnames[x.expression.left.object.name][x.expression.left.property.name] = x.expression.right.object.name+"."+x.expression.right.property.name;
                         var key = x.expression.left.property.name;
                         var value = x.expression.right.object.name+"."+x.expression.right.property.name;
                         //var t={};t[key]=value;
