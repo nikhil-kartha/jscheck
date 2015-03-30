@@ -14,11 +14,8 @@ var program_body = SCOPES[0].block.body;
 
 //Symbol Table to be processed by the type checker
 global.DICT={};    
-global.DICT.ASSIGN = [];
 global.DICT.VARNAMES = {};
-global.DICT.COMPARE = [];
 global.DICT.RETURN_TYPE = [];
-global.DICT.FUNCS = {};
 
 for(var i in program_body){
     var body = program_body[i];

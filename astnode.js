@@ -207,7 +207,9 @@ var CallExpression = function(node,DICT){
         var tright = process_lib_clone(node.right);
         var tleft = process_lhs(node.left);
         
-        DICT.ASSIGN.push([tleft, tright]);
+        //DICT.ASSIGN.push([tleft, tright]);
+        if(DICT.VARNAMES[tleft] === undefined){ DICT.VARNAMES[tleft]=[];}
+        DICT.VARNAMES[tleft].push(tright);
 
      }
     else if(node.callee && 
@@ -217,8 +219,10 @@ var CallExpression = function(node,DICT){
 
         // mixin wont be a part of an assignment expression.
         var comp = process_lib_mixin(node);
-        var refs = resolve_refs(comp, DICT.VARNAMES);
-        DICT.COMPARE = refs;
+        //var refs = resolve_refs(comp, DICT.VARNAMES);
+        //DICT.COMPARE = refs;
+        if(DICT.VARNAMES[comp[0]] === undefined){ DICT.VARNAMES[comp[0]]=[];}
+        DICT.VARNAMES[comp[0]].push(comp[1]);
     }
     else if (node.callee &&
         node.callee.type === "FunctionExpression"){
@@ -277,7 +281,8 @@ var AssignmentExpression = function(node, DICT){
         var tright = FunctionExpression(node, global.DICT);
         
         //DICT.ASSIGN.push([tleft, tright]);
-        DICT.ASSIGN.push([left, tright]);
+        //if(DICT.VARNAMES[left] === undefined){ DICT.VARNAMES[left]=[];}
+        DICT.VARNAMES[left].push([left, tright]);
     }
 
     else{
@@ -456,11 +461,11 @@ var ReturnStatement= function(node, DICT){
 var FunctionExpression= function(node, GLOBALDICT){
 
     var DICT={};
-    DICT.ASSIGN = [];
+    //DICT.ASSIGN = [];
     DICT.VARNAMES = {};
-    DICT.COMPARE = [];
+    //DICT.COMPARE = [];
     DICT.RETURN_TYPE = [];
-    DICT.FUNCS = {};
+    //DICT.FUNCS = {};
 
     var varnames={};
     //console.log("FunctionExpression: "+JSON.stringify(node));
