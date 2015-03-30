@@ -44,6 +44,8 @@ var VariableDeclarator = function (node){
                     elem.init.callee.object.name === "enyo" &&
                     elem.init.callee.property.name === "clone"
                   ){
+                    console.log("\nSKIP clone in Variabledeclarator");
+                    return;
                     value = elem.init.arguments[0].name;
                     locals[key].push(value);
                 }
@@ -191,13 +193,16 @@ var MemberExpression = function(node){
 }
 
 var CallExpression = function(node,DICT){
+    // node: AssignmentExpression. Note: param node is "not" CallExpression since clone shows up as a part of AssignmentExpression and we want to get hold of its lhs, but mixin is not.
     
     //console.log("CallExpression: "+JSON.stringify(node));
     if (node.right && 
         node.right.callee.type === "MemberExpression" && 
         node.right.callee.object.name === "enyo" && 
         node.right.callee.property.name === "clone"){
-        console.log("\nProcessing Clone  CallExpression: "+ JSON.stringify(node));
+
+        //console.log("SKIP clone in CallExpression");
+        //return;
         
         var tright = process_lib_clone(node.right);
         var tleft = process_lhs(node.left);
@@ -205,22 +210,19 @@ var CallExpression = function(node,DICT){
         DICT.ASSIGN.push([tleft, tright]);
 
      }
-    else if (node.expression && 
-        node.expression.callee.type === "MemberExpression" && 
-        node.expression.callee.object.name === "enyo" && 
-        node.expression.callee.property.name === "mixin"){
-        
-        console.log("\nProcessing Mixin  CallExpression: "+ JSON.stringify(node));
+    else if(node.callee && 
+        node.callee.type === "MemberExpression" && 
+        node.callee.object.name === "enyo" && 
+        node.callee.property.name === "mixin"){
+
         // mixin wont be a part of an assignment expression.
-        var comp = process_lib_mixin(node.expression);
+        var comp = process_lib_mixin(node);
         var refs = resolve_refs(comp, DICT.VARNAMES);
         DICT.COMPARE = refs;
     }
     else if (node.callee &&
-        node.callee.type === "FunctionExpression"
-    //else if (node &&
-    //    node.type === "FunctionExpression"
-       ){
+        node.callee.type === "FunctionExpression"){
+
         FunctionExpression(node.callee, global.DICT);
     }
     else {
@@ -265,7 +267,7 @@ var AssignmentExpression = function(node, DICT){
 
     //eg: this.holdPulseConfig = enyo.clone(this.holdPulseDefaultConfig, true);
     else if( node.right.type === "CallExpression"){
-        //CallExpression(node.right, DICT);
+        // To handle clone, which should always show up as part of an AssignmentExpression
         CallExpression(node, DICT);
     }
 
@@ -293,10 +295,8 @@ var ExpressionStatement = function(node, DICT){
     }
 
     else if(node.expression.type === "CallExpression"){
-        console.log("HERE: "+node.expression);
-        //To handle enyo.mixin
+        //To handle enyo.mixin and anonymous function calls
         CallExpression(node.expression, DICT);
-        //CallExpression(node, DICT);
     }
 
     else{
@@ -424,6 +424,34 @@ var is_subset = function (arr1, arr2){
 
 }
 
+var ReturnStatement= function(node, DICT){
+
+    if (node.argument && node.argument.type === "Identifier"){
+        // find exact match eg: "nOpts"
+        var return_type = DICT.VARNAMES[node.argument.name];
+        if(return_type){
+            DICT.RETURN_TYPE.push(return_type);
+        } else{
+            // match prefix eg: "nOpts."
+            for(var key in DICT.VARNAMES){
+                //console.log("Process Keys in ReturnStatement NOT IMPLEMENTED");
+               
+               if(key.indexOf(node.argument.name + '.') === 0){
+                    var arr = key.split('.');
+                    arr[0] = "OBJECT";
+                    key_type = arr.join('.');// nOpts.events ==> OBJECT.events
+                    DICT.RETURN_TYPE.push(key_type + '.'+ DICT.VARNAMES[key]);
+                }else{
+                    console.log("Failed to find a match for variable in ReturnStatement");
+                }
+            }
+        }
+    }
+    else{
+        console.log("SKIPPED UNKNOWN ReturnStatement: "+ JSON.stringify(node));
+    }
+
+}
 
 var FunctionExpression= function(node, GLOBALDICT){
 
@@ -449,13 +477,10 @@ var FunctionExpression= function(node, GLOBALDICT){
             ExpressionStatement(x, DICT);
         }
         else if(x.type === "ReturnStatement"){
-            if (x.argument && x.argument.type === "Identifier"){
-                var return_type = DICT.VARNAMES[x.argument.name];
-                DICT.RETURN_TYPE = return_type;
-            }
+            ReturnStatement(x, DICT);
         }
         else{
-            console.log("\nSKIPPED UNKNOWN FunctionExpression TYPE: "+ JSON.stringify(x)+"\n");
+            console.log("\nSKIPPED UNKNOWN NODE In FunctionExpression TYPE: "+ JSON.stringify(x)+"\n");
         }
         
         //if(x.type === "FunctionExpression"){

@@ -24,7 +24,6 @@ for(var i in program_body){
     var body = program_body[i];
 
     if( body.type === "ExpressionStatement"){ 
-        console.log("ExpressionStatement Node: "+ JSON.stringify(body.type));
         astnode.ExpressionStatement(body, global.DICT);
 
     }
