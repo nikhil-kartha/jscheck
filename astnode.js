@@ -33,7 +33,8 @@ var VariableDeclarator = function (node){
                     elem.init.alternate.callee.type === "MemberExpression" && 
                     elem.init.alternate.callee.object.type ==="ThisExpression"
                     ){
-                    value = elem.init.alternate.callee.property.name;
+                    //value = elem.init.alternate.callee.property.name;
+                    value = MemberExpression(elem.init.alternate.callee);
                     locals[key].push(value);
                 }
             }
@@ -118,13 +119,13 @@ var process_lib_mixin = function(obj){
 
     for (var i=0; i < obj.arguments.length; i +=1){
         var x = obj.arguments[i];
-
-        if(x.type === "MemberExpression" && x.object.type === "ThisExpression"){
-            args.push(x.property.name);
-        }
         
         if(x.type === "Identifier"){
             args.push(x.name);
+        }
+
+        if(x.type === "MemberExpression"){
+            args.push(MemberExpression(x));
         }
         
     }
@@ -162,13 +163,10 @@ var process_lib_clone = function(obj){
         return varname;
     }
 
-    if(obj.arguments[0].type === "MemberExpression" && obj.arguments[0].object.type === "ThisExpression"){
-        
-        if(obj.arguments[0].property.type === "Identifier"){
-            varname = obj.arguments[0].property.name;
-            return varname;
-        }
+    if(obj.arguments[0].type === "MemberExpression"){
+        return MemberExpression(obj.arguments[0]);
     }
+
 }
 
 
@@ -317,43 +315,48 @@ var ObjectExpression = function (properties, type, type_set){
     // Process the properties array
 
     var default_type = type;
-    for (var i in properties){
-        var object = properties[i];
 
-        if (object.key && object.key.type==="Identifier"){
-            type= type + "." + object.key.name
-        }
+    if(properties.length === 0){
+        type_set.push(type);
+    } else {
+        for (var i in properties){
+            var object = properties[i];
 
-        if (object.value && object.value.type==="Literal"){
-            // this is the leaf, we got a full type
-            type = type + "." + "Literal";
-            type_set.push(type);
-            //type = default_type; // reset type
-        } 
-        else if (object.value && object.value.type==="ObjectExpression"){
-            type = type + "." + "OBJECT";
-            ObjectExpression(object.value.properties, type, type_set);
-        } 
-        else if (object.value && object.value.type==="ArrayExpression"){
-            type = type + "." + "ARRAY";
-            ArrayExpression(object.value.elements, type, type_set);
-        }
-        else if (object.value && object.value.type==="FunctionExpression"){
-            var return_type = FunctionExpression(object.value, global.DICT);
-            for(j in return_type){
-                type_set.push(type + "." + return_type[j]);
+            if (object.key && object.key.type==="Identifier"){
+                type= type + "." + object.key.name
             }
+
+            if (object.value && object.value.type==="Literal"){
+                // this is the leaf, we got a full type
+                type = type + "." + "Literal";
+                type_set.push(type);
+                //type = default_type; // reset type
+            } 
+            else if (object.value && object.value.type==="ObjectExpression"){
+                type = type + "." + "OBJECT";
+                ObjectExpression(object.value.properties, type, type_set);
+            } 
+            else if (object.value && object.value.type==="ArrayExpression"){
+                type = type + "." + "ARRAY";
+                ArrayExpression(object.value.elements, type, type_set);
+            }
+            else if (object.value && object.value.type==="FunctionExpression"){
+                var return_type = FunctionExpression(object.value, global.DICT);
+                for(j in return_type){
+                    type_set.push(type + "." + return_type[j]);
+                }
+            }
+            else if (object.value && object.value.type==="MemberExpression"){
+                var literal = MemberExpression(object.value);
+                console.log("Replaced MemberExpression " + literal + " with the string/type Literal")
+                type = type + "." + "Literal";
+                type_set.push(type);
+            }
+            else {
+                console.log("\nSKIPPED UNKNOWN ObjectExpression: "+ JSON.stringify(object));
+            }
+            type = default_type; //reset type
         }
-        else if (object.value && object.value.type==="MemberExpression"){
-            var literal = MemberExpression(object.value);
-            console.log("Replaced MemberExpression " + literal + " with the string/type Literal")
-            type = type + "." + "Literal";
-            type_set.push(type);
-        }
-        else {
-            console.log("\nSKIPPED UNKNOWN ObjectExpression: "+ JSON.stringify(object));
-        }
-        type = default_type; //reset type
     }
 }
 
