@@ -16,6 +16,7 @@ var program_body = SCOPES[0].block.body;
 global.DICT={};    
 global.DICT.VARNAMES = {};
 global.DICT.RETURN_TYPE = [];
+global.current_range = "MODULE_"+filename;  // This is for function scope
 
 for(var i in program_body){
     var body = program_body[i];
