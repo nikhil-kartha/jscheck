@@ -33,11 +33,6 @@ for(var i in program_body){
 
 console.log("\nGLOBAL DICT: "+JSON.stringify(global.DICT));
 
-//Type Check
-
-var FUNC1 = "FUNC_1364_1509";
-var FUNC2 = "FUNC_1563_1823";
-
 function resolve_var(x, FUNC){
     //console.log("Resolving variable "+x);
     //console.log('Found value:' + FUNC.VARNAMES[x]);
@@ -73,14 +68,13 @@ function propagate_vars(FUNC, DICT)
                         }
                     }
                 }
-                //console.log("DICT FUNC UPPER / SCRATCH  :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
+                console.log("DICT FUNC UPPER / SCRATCH  :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
             }
         }
     }
-    console.log("DICT FUNC UPPER / SCRATCH :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
+    //console.log("DICT FUNC UPPER / SCRATCH :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
 }
 
-console.log("\nTYPE CHECKING ...");
 
 function type_check_func(func, GLOBALDICT)
 {
@@ -91,15 +85,13 @@ function type_check_func(func, GLOBALDICT)
 
     var DICT = GLOBALDICT;
     //console.log(DICT[func].VARNAMES);
+    var FUNC = DICT[func];
 
-    propagate_vars(DICT[func], DICT);
+    if(FUNC){
+        propagate_vars(FUNC, DICT);
+    }
 
 }
-
-//console.log("FUNC1");
-type_check_func(FUNC1, global.DICT);
-//console.log("FUNC2");
-type_check_func(FUNC2, global.DICT);
 
 function find_type_in_obj (s, obj, x)
 {
@@ -204,4 +196,28 @@ function type_check_scratch(obj, DICT){
     }
 }
 
-type_check_scratch("OBJ_328_1829",global.DICT);
+function typechecker(){
+
+    console.log("\nTYPE CHECKING ...\n");
+
+    for(var i in SCOPES){
+        if(i === "0"){
+            console.log("SKIP SCOPE[0]");
+            continue;
+            }
+        var FUNC = "FUNC_"+SCOPES[i].block.body.range[0]+"_"+SCOPES[i].block.body.range[1]
+        console.log("\nProcessing "+ FUNC);
+        type_check_func(FUNC, global.DICT);
+
+    }
+
+    for(var key in global.DICT){
+        if(key.indexOf("OBJ_") === 0){
+            console.log("\nProcessing "+key);
+            type_check_scratch(key,global.DICT);
+        }
+    }
+
+}
+
+typechecker();

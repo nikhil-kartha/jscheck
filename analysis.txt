@@ -13,8 +13,25 @@ SKIPPED UNKNOWN  CallExpression: {"type":"AssignmentExpression","operator":"=","
 GLOBAL DICT: {"VARNAMES":{},"RETURN_TYPE":[],"UPPER":"NULL","FUNC_24_1833":{"VARNAMES":{"enyo.gesture.drag":[["OBJECT.holdPulseDefaultConfig.OBJECT.frequency.Literal","OBJECT.holdPulseDefaultConfig.OBJECT.events.ARRAY.OBJECT.name.Literal","OBJECT.holdPulseDefaultConfig.OBJECT.events.ARRAY.OBJECT.time.Literal","OBJECT.holdPulseDefaultConfig.OBJECT.resume.Literal","OBJECT.holdPulseDefaultConfig.OBJECT.moveTolerance.Literal","OBJECT.holdPulseDefaultConfig.OBJECT.endHold.Literal","OBJECT.holdPulseConfig.OBJECT","OBJECT.normalizeHoldPulseConfig.OBJECT.frequency.nOpts.delay","OBJECT.normalizeHoldPulseConfig.OBJECT.events.ARRAY.OBJECT.hold.Literal"]]},"SCRATCH":{},"UPPER":"MODULE_jssample/drag.js","RETURN_TYPE":[]},"OBJ_328_1829":{"holdPulseDefaultConfig":"OBJ_381_506","configureHoldPulse":[],"holdPulseConfig":"OBJ_705_707","normalizeHoldPulseConfig":["OBJECT.frequency.nOpts.delay","OBJECT.events.ARRAY.OBJECT.hold.Literal"],"_configureHoldPulse":[],"prepareHold":[]},"OBJ_381_506":{"frequency":"Literal","events":"OBJ_413_440","resume":"Literal","moveTolerance":"Literal","endHold":"Literal"},"OBJ_413_440":{"ARRAY":"OBJ_414_439"},"OBJ_414_439":{"name":"Literal","time":"Literal"},"FUNC_549_659":{"VARNAMES":{"this.holdPulseDefaultConfig":["config"]},"SCRATCH":{},"UPPER":"OBJ_328_1829","RETURN_TYPE":[]},"OBJ_705_707":{},"FUNC_891_1113":{"VARNAMES":{"nOpts.frequency":["nOpts.delay"],"nOpts.events":[["ARRAY.OBJECT.hold.Literal"]]},"SCRATCH":{},"UPPER":"OBJ_328_1829","RETURN_TYPE":["OBJECT.frequency.nOpts.delay","OBJECT.events.ARRAY.OBJECT.hold.Literal"]},"OBJ_982_1001":{"hold":"ARRAY.OBJECT.hold.Literal"},"FUNC_1364_1509":{"VARNAMES":{"nOpts":["opts","this.normalizeHoldPulseConfig"],"this.holdPulseConfig":["nOpts"]},"SCRATCH":{},"UPPER":"OBJ_328_1829","RETURN_TYPE":[]},"FUNC_1563_1823":{"VARNAMES":{"this.holdPulseConfig":["this.holdPulseDefaultConfig"],"e.configureHoldPulse":[]},"SCRATCH":{},"UPPER":"OBJ_328_1829","RETURN_TYPE":[]}}
 
 TYPE CHECKING ...
-DICT FUNC UPPER / SCRATCH :{"holdPulseConfig":["opts","this.normalizeHoldPulseConfig"]}
-DICT FUNC UPPER / SCRATCH :{"holdPulseConfig":["opts","this.normalizeHoldPulseConfig","this.holdPulseDefaultConfig"]}
+
+SKIP SCOPE[0]
+
+Processing FUNC_24_1833
+
+Processing FUNC_94_266
+
+Processing FUNC_549_659
+DICT FUNC UPPER / SCRATCH  :{"holdPulseDefaultConfig":[]}
+
+Processing FUNC_891_1113
+
+Processing FUNC_1364_1509
+DICT FUNC UPPER / SCRATCH  :{"holdPulseDefaultConfig":[],"holdPulseConfig":["opts","this.normalizeHoldPulseConfig"]}
+
+Processing FUNC_1563_1823
+DICT FUNC UPPER / SCRATCH  :{"holdPulseDefaultConfig":[],"holdPulseConfig":["opts","this.normalizeHoldPulseConfig","this.holdPulseDefaultConfig"]}
+
+Processing OBJ_328_1829
 type check object
 find type
 found frequency
@@ -24,3 +41,13 @@ found events
 find type
 find type
 Failed to find hold in {"name":"Literal","time":"Literal"}
+
+Processing OBJ_381_506
+
+Processing OBJ_413_440
+
+Processing OBJ_414_439
+
+Processing OBJ_705_707
+
+Processing OBJ_982_1001
