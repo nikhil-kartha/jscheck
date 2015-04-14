@@ -422,45 +422,51 @@ var ArrayExpression = function (elements, type, type_set){
     // Process the elements array
     
     var default_type = type;
-    for (var i in elements){
-        var object = elements[i];
 
-        var name = "ARRAYEXP";
+    if(elements.length === 0){
+        type_set.push(type);
+    } else {
 
-        if (object.type==="Literal"){
-            // this is the leaf, we got a full type
-            type = type + "." + "Literal";
-            type_set.push(type);
-        } 
-        else if (object.type==="ObjectExpression"){
-            type = type + "." + "OBJECT";
+        for (var i in elements){
+            var object = elements[i];
 
-            var temp = global.current_object;
-            var current_object = "OBJ_" + object.range[0] + "_" + object.range[1];
-            // Assign reference to the current object in the previous object scope
-            global.DICT[temp][name] = current_object;
-            global["current_object"] = current_object;
-            if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+            var name = "ARRAY";
 
-            ObjectExpression(object.properties, type, type_set);
+            if (object.type==="Literal"){
+                // this is the leaf, we got a full type
+                type = type + "." + "Literal";
+                type_set.push(type);
+            } 
+            else if (object.type==="ObjectExpression"){
+                type = type + "." + "OBJECT";
 
-            global.current_object = temp;
-        } 
-        else if (object.type==="ArrayExpression"){
-            type = type + "." + "ARRAY";
+                var temp = global.current_object;
+                var current_object = "OBJ_" + object.range[0] + "_" + object.range[1];
+                // Assign reference to the current object in the previous object scope
+                global.DICT[temp][name] = current_object;
+                global["current_object"] = current_object;
+                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
 
-            var temp = global.current_object;
-            var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-            // Assign reference to the current object in the previous object scope
-            global.DICT[temp][name] = current_object;
-            global["current_object"] = current_object;
-            if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+                ObjectExpression(object.properties, type, type_set);
 
-            ArrayExpression(object.elements, type, type_set);
+                global.current_object = temp;
+            } 
+            else if (object.type==="ArrayExpression"){
+                type = type + "." + "ARRAY";
 
-            global.current_object = temp;
+                var temp = global.current_object;
+                var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+                // Assign reference to the current object in the previous object scope
+                global.DICT[temp][name] = current_object;
+                global["current_object"] = current_object;
+                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+
+                ArrayExpression(object.elements, type, type_set);
+
+                global.current_object = temp;
+            }
+            type = default_type; //reset type
         }
-        type = default_type; //reset type
     }
 
 }
@@ -540,6 +546,7 @@ var FunctionExpression= function(node, GLOBALDICT){
     var DICT={};
     //DICT.ASSIGN = [];
     DICT.VARNAMES = {};
+    DICT.SCRATCH = {};
     DICT.UPPER="UNDEFINED";
     //DICT.COMPARE = [];
     DICT.RETURN_TYPE = [];
