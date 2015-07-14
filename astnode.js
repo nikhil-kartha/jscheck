@@ -544,24 +544,21 @@ var ReturnStatement= function(node, DICT){
 var FunctionExpression= function(node, GLOBALDICT){
 
     var DICT={};
-    //DICT.ASSIGN = [];
     DICT.VARNAMES = {};
     DICT.SCRATCH = {};
     DICT.UPPER="UNDEFINED";
-    //DICT.COMPARE = [];
     DICT.RETURN_TYPE = [];
-    //DICT.FUNCS = {};
 
-    var temp_range = global.current_range;
+    var temp_function = global.current_function;
     
     // Set scope/range
-    global.current_range = "FUNC_"+node.body.range[0]+"_"+node.body.range[1];
-    GLOBALDICT[global.current_range]={};
+    global.current_function = "FUNC_"+node.body.range[0]+"_"+node.body.range[1];
+    GLOBALDICT[global.current_function]={};
 
     // Change the scope of an object to the current function.
-    var temp = global.current_object;
-    DICT.UPPER = temp;
-    var current_object = temp_range;
+    var temp_object = global.current_object;
+    DICT.UPPER = temp_object;
+    var current_object = temp_function;
     global["current_object"] = current_object;
 
 
@@ -593,8 +590,8 @@ var FunctionExpression= function(node, GLOBALDICT){
     GLOBALDICT["FUNC_"+node.body.range[0]+"_"+node.body.range[1]] = DICT;
 
     // Reset scope/range
-    global.current_range = temp_range;
-    global.current_object = temp;
+    global.current_function = temp_function;
+    global.current_object = temp_object;
 
     //return DICT;
     return DICT.RETURN_TYPE;

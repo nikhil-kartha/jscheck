@@ -13,7 +13,7 @@ global.DICT={};
 global.DICT.VARNAMES = {};
 global.DICT.RETURN_TYPE = [];
 global.DICT.UPPER="NULL";
-global.current_range = "MODULE_"+filename;  // This is for function scope
+global.current_function = "MODULE_"+filename;  // This is for function scope
 global.current_object = "MODULE_"+filename;   //"ROOTOBJECT";
 
 var AST = esprima.parse(content, { tolerant: true, loc: true, range: true });
