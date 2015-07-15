@@ -184,7 +184,6 @@ var process_lib_clone = function(obj){
 
 
 var MemberExpression = function(node){
-    //console.log("\nMemberExpression NOT IMPLEMENTED, not processed node: "+ JSON.stringify(node));
 
     var str="";
 
@@ -206,7 +205,6 @@ var MemberExpression = function(node){
 var CallExpression = function(node,DICT){
     // node: AssignmentExpression. Note: param node is "not" CallExpression since clone shows up as a part of AssignmentExpression and we want to get hold of its lhs, but mixin is not.
     
-    //console.log("CallExpression: "+JSON.stringify(node));
     if(node.callee && 
         node.callee.type === "MemberExpression" && 
         node.callee.object.name === "enyo" && 
@@ -228,7 +226,7 @@ var CallExpression = function(node,DICT){
         }
     }
     else if (node.callee &&
-        node.callee.type === "FunctionExpression"){
+            node.callee.type === "FunctionExpression"){
 
         FunctionExpression(node.callee, global.DICT);
     }
@@ -276,10 +274,8 @@ var AssignmentExpression = function(node, DICT){
     else if(node.right.type === "ObjectExpression"){
         var t = [];
         var temp = SET_SCOPE(node)
-        
         ObjectExpression(node.right.properties, "OBJECT", t);
         right = t;
-
         RESET_SCOPE(temp);
     }
 
@@ -300,13 +296,41 @@ var AssignmentExpression = function(node, DICT){
 
 }
 
+var SET_OBJECT_ELEMENT_SCOPE = function(name, object){
+
+    var temp = global.current_object;
+    var current_object = "OBJ_" + object.range[0] + "_" + object.range[1];
+
+    // Assign reference to the current object in the previous object scope
+    global.DICT[temp][name] = current_object;
+    global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+    if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+   
+    return temp;
+
+}
+
+var SET_OBJECT_SCOPE = function(name, object){
+
+    var temp = global.current_object;
+
+    var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+
+    // Assign reference to the current object in the previous object scope
+    global.DICT[temp][name] = current_object;
+    global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+    if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+    
+    return temp;
+}
+
 var SET_SCOPE = function(node){
     
     var temp = global.current_object;
 
     global["current_object"] = "OBJ_" + node.right.range[0] + "_" + node.right.range[1];
     if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] ={} };
-
+    
     return temp;
 }
 
@@ -374,33 +398,15 @@ var ObjectExpression = function (properties, type, type_set){
             } 
             else if (object.value && object.value.type==="ObjectExpression"){
                 type = type + "." + "OBJECT";
-                
-                var temp = global.current_object;
-                var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-                
-                // Assign reference to the current object in the previous object scope
-                global.DICT[temp][name] = current_object;
-                global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
-                
+                var temp = SET_OBJECT_SCOPE(name, object);
                 ObjectExpression(object.value.properties, type, type_set);
-                
-                global.current_object = temp;
+                RESET_SCOPE(temp);
             } 
             else if (object.value && object.value.type==="ArrayExpression"){
                 type = type + "." + "ARRAY";
-
-                var temp = global.current_object;
-                var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-
-                // Assign reference to the current object in the previous object scope
-                global.DICT[temp][name] = current_object;
-                global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
-
+                var temp = SET_OBJECT_SCOPE(name, object);
                 ArrayExpression(object.value.elements, type, type_set);
-                
-                global.current_object = temp;
+                RESET_SCOPE(temp);
             }
             else if (object.value && object.value.type==="FunctionExpression"){
                 var return_type = FunctionExpression(object.value, global.DICT);
@@ -412,7 +418,7 @@ var ObjectExpression = function (properties, type, type_set){
             }
             else if (object.value && object.value.type==="MemberExpression"){
                 var literal = MemberExpression(object.value);
-                console.log("Replaced MemberExpression " + literal + " with the string/type Literal")
+                console.log("Replaced MemberExpression " + literal + " with the string/type Literal");
                 type = type + "." + "Literal";
                 type_set.push(type);
 
@@ -451,33 +457,15 @@ var ArrayExpression = function (elements, type, type_set){
             } 
             else if (object.type==="ObjectExpression"){
                 type = type + "." + "OBJECT";
-
-                var temp = global.current_object;
-                var current_object = "OBJ_" + object.range[0] + "_" + object.range[1];
-                
-                // Assign reference to the current object in the previous object scope
-                global.DICT[temp][name] = current_object;
-                global["current_object"] = current_object;
-                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
-
+                var temp = SET_OBJECT_ELEMENT_SCOPE(name, object);
                 ObjectExpression(object.properties, type, type_set);
-
-                global.current_object = temp;
+                RESET_SCOPE(temp);
             } 
             else if (object.type==="ArrayExpression"){
                 type = type + "." + "ARRAY";
-
-                var temp = global.current_object;
-                var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
-
-                // Assign reference to the current object in the previous object scope
-                global.DICT[temp][name] = current_object;
-                global["current_object"] = current_object;
-                if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
-
+                var temp = SET_OBJECT_SCOPE(name, object); 
                 ArrayExpression(object.elements, type, type_set);
-
-                global.current_object = temp;
+                RESET_SCOPE(temp);
             }
             type = default_type; //reset type
         }
@@ -555,13 +543,7 @@ var ReturnStatement= function(node, DICT){
 
 }
 
-var FunctionExpression= function(node, GLOBALDICT){
-
-    var DICT={};
-    DICT.VARNAMES = {};
-    DICT.SCRATCH = {};
-    DICT.UPPER="UNDEFINED";
-    DICT.RETURN_TYPE = [];
+var SET_FUNCTION_SCOPE = function(node, GLOBALDICT, DICT){
 
     var temp_function = global.current_function;
     
@@ -575,8 +557,33 @@ var FunctionExpression= function(node, GLOBALDICT){
     var current_object = temp_function;
     global["current_object"] = current_object;
 
+    var prev={};
+    prev.func = temp_function;
+    prev.object = temp_object;
 
-    var varnames={};
+    return prev;
+
+}
+
+var RESET_FUNCTION_SCOPE = function(prev){
+
+    // Reset scope/range
+    global.current_function = prev.func;
+    global.current_object = prev.object;
+
+}
+
+
+var FunctionExpression= function(node, GLOBALDICT){
+
+    var DICT={};
+    DICT.VARNAMES = {};
+    DICT.SCRATCH = {};
+    DICT.UPPER="UNDEFINED";
+    DICT.RETURN_TYPE = [];
+
+    var prev = SET_FUNCTION_SCOPE(node, GLOBALDICT, DICT);
+
     //console.log("FunctionExpression: "+JSON.stringify(node));
     for(var i = 0; i < node.body.body.length; i += 1){
         //console.log("FunctionExpression: "+JSON.stringify(node.body.body[i]));
@@ -603,9 +610,7 @@ var FunctionExpression= function(node, GLOBALDICT){
 
     GLOBALDICT["FUNC_"+node.body.range[0]+"_"+node.body.range[1]] = DICT;
 
-    // Reset scope/range
-    global.current_function = temp_function;
-    global.current_object = temp_object;
+    RESET_FUNCTION_SCOPE(prev);
 
     //return DICT;
     return DICT.RETURN_TYPE;
