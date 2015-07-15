@@ -207,28 +207,7 @@ var CallExpression = function(node,DICT){
     // node: AssignmentExpression. Note: param node is "not" CallExpression since clone shows up as a part of AssignmentExpression and we want to get hold of its lhs, but mixin is not.
     
     //console.log("CallExpression: "+JSON.stringify(node));
-    if (node.right && 
-        node.right.callee.type === "MemberExpression" && 
-        node.right.callee.object.name === "enyo" && 
-        node.right.callee.property.name === "clone"){
-
-        //console.log("SKIP clone in CallExpression");
-        //return;
-        
-        var tright = process_lib_clone(node.right);
-        var tleft = process_lhs(node.left);
-
-        if(tleft.indexOf("this") === 0){
-            if(global.DICT[global.current_object][tleft] === undefined) {global.DICT[global.current_object][tleft]=[] };
-            global.DICT[global.current_object][tleft].push(tright);
-        }
-        
-        //DICT.ASSIGN.push([tleft, tright]);
-        if(DICT.VARNAMES[tleft] === undefined){ DICT.VARNAMES[tleft]=[];}
-        DICT.VARNAMES[tleft].push(tright);
-
-     }
-    else if(node.callee && 
+    if(node.callee && 
         node.callee.type === "MemberExpression" && 
         node.callee.object.name === "enyo" && 
         node.callee.property.name === "mixin"){
@@ -265,59 +244,88 @@ var AssignmentExpression = function(node, DICT){
     //console.log("\n Processing AssignMentExpression: "+ JSON.stringify(node))
 
     var left = process_lhs(node.left);
+    var right = null;
+
     if(DICT.VARNAMES[left] === undefined){ DICT.VARNAMES[left]=[];}// NOTE: This should proabably update ASSIGN and not VARNAMES ? 
 
     //eg: nOpts.frequency = nOpts.delay;
     if (node.right.type === "Identifier"){
-        DICT.VARNAMES[left].push(node.right.name);
+        right = node.right.name;
     }
+
     else if (node.right.type === "MemberExpression"){
-        var t = MemberExpression(node.right);
-        //DICT.VARNAMES[node.left.object.name].push(t);
-        if(left.indexOf("this") === 0){ 
-            if(global.DICT[global.current_object][left] === undefined) {global.DICT[global.current_object][left]=[] };
-            global.DICT[global.current_object][left].push(t);
-        }
-        DICT.VARNAMES[left].push(t);
+        right = MemberExpression(node.right);
     }
 
     //eg: nOpts.events = [{hold: nOpts.delay}];
     else if(node.right.type === "ArrayExpression"){
         var t = [];
         ArrayExpression(node.right.elements, "ARRAY", t);
-        DICT.VARNAMES[left].push(t);
+        right = t;
     }
+
+    else if (node.right && node.right.callee && 
+        node.right.callee.type === "MemberExpression" && 
+        node.right.callee.object.name === "enyo" && 
+        node.right.callee.property.name === "clone"){
+
+        // eg: this.holdPulseConfig = enyo.clone(this.holdPulseDefaultConfig, true);
+        right = process_lib_clone(node.right);
+     }
 
     else if(node.right.type === "ObjectExpression"){
         var t = [];
-        //var obj_range;
-        var temp = global.current_object;
-        global["current_object"] = "OBJ_" + node.right.range[0] + "_" + node.right.range[1];
-        if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] ={} };
+        var temp = SET_SCOPE(node)
+        
         ObjectExpression(node.right.properties, "OBJECT", t);
-        DICT.VARNAMES[left].push(t);
-        global.current_object = temp;
-    }
+        right = t;
 
-    //eg: this.holdPulseConfig = enyo.clone(this.holdPulseDefaultConfig, true);
-    else if( node.right.type === "CallExpression"){
-        // To handle clone, which should always show up as part of an AssignmentExpression
-        CallExpression(node, DICT);
+        RESET_SCOPE(temp);
     }
 
     else if( node.right.type === "FunctionExpression"){
         
-        //var tleft = process_lhs(node.left);
         var tright = FunctionExpression(node, global.DICT);
-        
-        DICT.VARNAMES[left].push([left, tright]);
+        right = [left, tright];
     }
 
     else{
-        console.log("\nSKIPPED UNKNOWN AssignMentExpression: "+ JSON.stringify(node))
+        console.log("\nSKIPPED UNKNOWN AssignmentExpression: "+ JSON.stringify(node));
+        return null;
+    }
+
+    DICT.VARNAMES[left].push(right);
+
+    UPDATE_GLOBAL(left, right);
+
+}
+
+var SET_SCOPE = function(node){
+    
+    var temp = global.current_object;
+
+    global["current_object"] = "OBJ_" + node.right.range[0] + "_" + node.right.range[1];
+    if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] ={} };
+
+    return temp;
+}
+
+var RESET_SCOPE = function(temp){
+
+    global.current_object = temp;
+
+}
+
+var UPDATE_GLOBAL = function(left, right){
+
+    if(left.indexOf("this") === 0){ 
+        // HACK update global, since lhs starts with "this." FIXME
+        if(global.DICT[global.current_object][left] === undefined) {global.DICT[global.current_object][left]=[] };
+        global.DICT[global.current_object][left].push(right);
     }
 
 }
+
 
 var ExpressionStatement = function(node, DICT){
 
@@ -366,6 +374,7 @@ var ObjectExpression = function (properties, type, type_set){
             } 
             else if (object.value && object.value.type==="ObjectExpression"){
                 type = type + "." + "OBJECT";
+                
                 var temp = global.current_object;
                 var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
                 
@@ -373,7 +382,9 @@ var ObjectExpression = function (properties, type, type_set){
                 global.DICT[temp][name] = current_object;
                 global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
                 if (global.DICT[global.current_object] === undefined){ global.DICT[global.current_object] = {} };
+                
                 ObjectExpression(object.value.properties, type, type_set);
+                
                 global.current_object = temp;
             } 
             else if (object.value && object.value.type==="ArrayExpression"){
@@ -381,6 +392,7 @@ var ObjectExpression = function (properties, type, type_set){
 
                 var temp = global.current_object;
                 var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+
                 // Assign reference to the current object in the previous object scope
                 global.DICT[temp][name] = current_object;
                 global["current_object"] = current_object;   //"OBJ_" + object.value.range[0] + "_" + object.value.range[1];
@@ -442,6 +454,7 @@ var ArrayExpression = function (elements, type, type_set){
 
                 var temp = global.current_object;
                 var current_object = "OBJ_" + object.range[0] + "_" + object.range[1];
+                
                 // Assign reference to the current object in the previous object scope
                 global.DICT[temp][name] = current_object;
                 global["current_object"] = current_object;
@@ -456,6 +469,7 @@ var ArrayExpression = function (elements, type, type_set){
 
                 var temp = global.current_object;
                 var current_object = "OBJ_" + object.value.range[0] + "_" + object.value.range[1];
+
                 // Assign reference to the current object in the previous object scope
                 global.DICT[temp][name] = current_object;
                 global["current_object"] = current_object;
