@@ -1,62 +1,3 @@
-function resolve_var(x, FUNC){
-    //console.log("Resolving variable "+x);
-    //console.log('Found value:' + FUNC.VARNAMES[x]);
-    return FUNC.VARNAMES[x];
-}
-
-function propagate_vars(FUNC, DICT)
-{
-    for (var prop in FUNC.VARNAMES){
-        if(FUNC.VARNAMES.hasOwnProperty(prop)){
-            //console.log(prop);
-            //resolve_var(prop, FUNC)
-            if(prop.indexOf("this.") === 0){
-                // Lookup in UPPER scope
-                var name = prop.split('.')[1];
-                if(DICT[FUNC.UPPER]["SCRATCH"] === undefined){ DICT[FUNC.UPPER]["SCRATCH"] = {} }
-                if(DICT[FUNC.UPPER]["SCRATCH"][name] === undefined){ DICT[FUNC.UPPER]["SCRATCH"][name] = [] }
-                //DICT[FUNC.UPPER]["SCRATCH"][name].push(FUNC.VARNAMES[prop]);
-                var vars = FUNC.VARNAMES[prop]
-                for (var i in vars){
-                    if(vars[i].indexOf("this.") === 0){
-                        //console.log("this.");
-                        DICT[FUNC.UPPER]["SCRATCH"][name].push(vars[i]);
-                    } else{
-                        //console.log("resolve");
-                        var multiple = resolve_var(vars[i], FUNC);
-                        if( typeof(multiple) === "string"){
-                            DICT[FUNC.UPPER]["SCRATCH"][name].push(multiple);
-                        } else{
-                            for (var j in multiple){
-                                DICT[FUNC.UPPER]["SCRATCH"][name].push(multiple[j]);
-                            }
-                        }
-                    }
-                }
-                console.log("DICT FUNC UPPER / SCRATCH  :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
-            }
-        }
-    }
-    //console.log("DICT FUNC UPPER / SCRATCH :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
-}
-
-
-function type_check_func(func, GLOBALDICT)
-{
-    /*
-    { nOpts: [ 'opts', 'this.normalizeHoldPulseConfig' ],
-      'this.holdPulseConfig': [ 'nOpts' ] }
-    */
-
-    var DICT = GLOBALDICT;
-    //console.log(DICT[func].VARNAMES);
-    var FUNC = DICT[func];
-
-    if(FUNC){
-        propagate_vars(FUNC, DICT);
-    }
-
-}
 
 function find_type_in_obj (s, obj, x)
 {
@@ -161,6 +102,66 @@ function type_check_scratch(obj, DICT){
     }
 }
 
+function resolve_var(x, FUNC){
+    //console.log("Resolving variable "+x);
+    //console.log('Found value:' + FUNC.VARNAMES[x]);
+    return FUNC.VARNAMES[x];
+}
+
+function propagate_vars(FUNC, DICT)
+{
+    for (var prop in FUNC.VARNAMES){
+        if(FUNC.VARNAMES.hasOwnProperty(prop)){
+            //console.log(prop);
+            //resolve_var(prop, FUNC)
+            if(prop.indexOf("this.") === 0){
+                // Lookup in UPPER scope
+                var name = prop.split('.')[1];
+                if(DICT[FUNC.UPPER]["SCRATCH"] === undefined){ DICT[FUNC.UPPER]["SCRATCH"] = {} }
+                if(DICT[FUNC.UPPER]["SCRATCH"][name] === undefined){ DICT[FUNC.UPPER]["SCRATCH"][name] = [] }
+                //DICT[FUNC.UPPER]["SCRATCH"][name].push(FUNC.VARNAMES[prop]);
+                var vars = FUNC.VARNAMES[prop]
+                for (var i in vars){
+                    if(vars[i].indexOf("this.") === 0){
+                        //console.log("this.");
+                        DICT[FUNC.UPPER]["SCRATCH"][name].push(vars[i]);
+                    } else{
+                        //console.log("resolve");
+                        var multiple = resolve_var(vars[i], FUNC);
+                        if( typeof(multiple) === "string"){
+                            DICT[FUNC.UPPER]["SCRATCH"][name].push(multiple);
+                        } else{
+                            for (var j in multiple){
+                                DICT[FUNC.UPPER]["SCRATCH"][name].push(multiple[j]);
+                            }
+                        }
+                    }
+                }
+                console.log("DICT FUNC UPPER / SCRATCH  :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
+            }
+        }
+    }
+    //console.log("DICT FUNC UPPER / SCRATCH :" + JSON.stringify(DICT[FUNC.UPPER]["SCRATCH"]));
+}
+
+
+function type_check_func(func, GLOBALDICT)
+{
+    /*
+    { nOpts: [ 'opts', 'this.normalizeHoldPulseConfig' ],
+      'this.holdPulseConfig': [ 'nOpts' ] }
+    */
+
+    var DICT = GLOBALDICT;
+    //console.log(DICT[func].VARNAMES);
+    var FUNC = DICT[func];
+
+    if(FUNC){
+        propagate_vars(FUNC, DICT);
+    }
+
+}
+
 function typechecker(SCOPES){
 
     console.log("\nTYPE CHECKING ...\n");
@@ -169,7 +170,7 @@ function typechecker(SCOPES){
         if(i === "0"){
             console.log("SKIP SCOPE[0]");
             continue;
-            }
+        }
         var FUNC = "FUNC_"+SCOPES[i].block.body.range[0]+"_"+SCOPES[i].block.body.range[1]
         console.log("\nProcessing "+ FUNC);
         type_check_func(FUNC, global.DICT);
@@ -179,7 +180,7 @@ function typechecker(SCOPES){
     for(var key in global.DICT){
         if(key.indexOf("OBJ_") === 0){
             console.log("\nProcessing "+key);
-            type_check_scratch(key,global.DICT);
+            type_check_scratch(key, global.DICT);
         }
     }
 

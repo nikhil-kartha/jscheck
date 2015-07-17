@@ -1,119 +1,81 @@
 var VariableDeclarator = function (node){
-    // return:
-    // locals = {
+
+    var key;
+    var value;
+
+    var elem = node;
+
+    key = elem.id.name;
+
+    if(elem.init && elem.init.type === "ConditionalExpression"){
+        
+        if(elem.init.consequent.type === "Identifier"){
+            value = elem.init.consequent.name;
+        }
+        if(elem.init.consequent.type === "CallExpression"){
+            value = elem.init.consequent.callee.name;
+        }
+        if(elem.init.alternate.type === "Identifier"){
+            value = elem.init.alternate.name;
+        }
+        if( elem.init.alternate.type === "CallExpression" && 
+            elem.init.alternate.callee.type === "MemberExpression" && 
+            elem.init.alternate.callee.object.type ==="ThisExpression"
+            ){
+            //value = elem.init.alternate.callee.property.name;
+            value = MemberExpression(elem.init.alternate.callee);
+        }
+    }
+    
+    if(elem.init && elem.init.type === "CallExpression"){
+        if( elem.init.callee.type === "MemberExpression" && 
+            elem.init.callee.object.type === "Identifier" && 
+            elem.init.callee.object.name === "enyo" &&
+            elem.init.callee.property.name === "clone"
+          ){
+            console.log("\nSKIP clone in Variabledeclarator");
+            value = elem.init.arguments[0].name;
+            return null;
+        }
+    }
+
+    return { 'name':key,  'value' : value} 
+}
+
+var VariableDeclaration = function(node, DICT){
+    // Updates:
+    // DICT.VARNAMES = {
     //    var1:[value1, value2,...], 
     //    var2:[value1, value2,...],
     //    ...};
-    var locals = {};
-    var key;
-    var value;
+
     var elem;
+    var varnames={};
 
     for (var i = 0; i < node.declarations.length; i += 1){
         elem = node.declarations[i];
         if(elem.type === "VariableDeclarator"){
-            key = elem.id.name;
-            locals[key] = locals[key] || [];
-
-            if(elem.init && elem.init.type === "ConditionalExpression"){
-                
-                if(elem.init.consequent.type === "Identifier"){
-                    value = elem.init.consequent.name;
-                    locals[key].push(value);
-                }
-                if(elem.init.consequent.type === "CallExpression"){
-                    value = elem.init.consequent.callee.name;
-                    locals[key].push(value);
-                }
-                if(elem.init.alternate.type === "Identifier"){
-                    value = elem.init.alternate.name;
-                    locals[key].push(value);
-                }
-                if( elem.init.alternate.type === "CallExpression" && 
-                    elem.init.alternate.callee.type === "MemberExpression" && 
-                    elem.init.alternate.callee.object.type ==="ThisExpression"
-                    ){
-                    //value = elem.init.alternate.callee.property.name;
-                    value = MemberExpression(elem.init.alternate.callee);
-                    locals[key].push(value);
-                }
+            var h = VariableDeclarator(elem);
+            if(h){
+                varnames[h.name] = varnames[h.name] ||[];
+                varnames[h.name].push(h.value);
             }
-            
-            if(elem.init && elem.init.type === "CallExpression"){
-                if( elem.init.callee.type === "MemberExpression" && 
-                    elem.init.callee.object.type === "Identifier" && 
-                    elem.init.callee.object.name === "enyo" &&
-                    elem.init.callee.property.name === "clone"
-                  ){
-                    console.log("\nSKIP clone in Variabledeclarator");
-                    return;
-                    value = elem.init.arguments[0].name;
-                    locals[key].push(value);
-                }
-            }
-
-        }
-        
-    }
-
-    return locals;
-}
-
-var update_varnames = function(node, DICT){
-    var h = VariableDeclarator(node);
-    var varnames={};
-    for(var key in h){
-        varnames[key] = varnames[key] ||[];
-        for(var ele in h[key]){
-            varnames[key].push(h[key][ele]);
         }
     }
-    
+
     DICT.VARNAMES = varnames;
-
 }
 
-var resolve_refs = function(comp, varnames){
+var resolve_refs = function(identifier, mapping){
     // returns:
-    // [ [vara1, varb1], 
-    //   [vara1, varb2],
-    //   ...
-    // ]
+    // [vara1, varb1] 
 
-    var list0=[], list1=[];
-/*
-    if(comp.length === 2){
-        
-        // lookup comp[0] in varnames
-        var key = comp[0];
-        if(key in varnames){
-            for(x in varnames[key]){
-                list0.push(varnames[key][x]);
-            }
-        }else{
-            list0.push(key);
-        }
+    var list0=[];
 
-        //lookup comp[1] in varnames
-        var key = comp[1];
-        if(key in varnames){
-            for(x in varnames[key]){
-                list1.push(varnames[key][x]);
-            }
-        }else{
-            //context.report(node, "COMP2:"+JSON.stringify(key));
-            list1.push(key);
-        }
-        
-    }
-   console.log("list0:"+list0); 
-   console.log("list1:"+list1); 
-    return [list0, list1]
-*/
-    var key = comp;
-    if(key in varnames){
-        for(x in varnames[key]){
-            list0.push(varnames[key][x]);
+    var key = identifier;
+    if(key in mapping){
+        for(x in mapping[key]){
+            list0.push(mapping[key][x]);
         }
     }else{
         list0.push(key);
@@ -213,8 +175,10 @@ var CallExpression = function(node,DICT){
         // mixin wont be a part of an assignment expression.
         var comp = process_lib_mixin(node);
         var refs = resolve_refs(comp[1], DICT.VARNAMES);
+
         console.log("comp: "+ comp);
         console.log("Resolved Refs: "+refs);
+        
         //DICT.COMPARE = refs;
         if(DICT.VARNAMES[comp[0]] === undefined){ DICT.VARNAMES[comp[0]]=[];}
         DICT.VARNAMES[comp[0]].push(comp[1]);
@@ -591,7 +555,7 @@ var FunctionExpression= function(node, GLOBALDICT){
 
 
         if (x.type === "VariableDeclaration"){
-            update_varnames(x, DICT);
+            VariableDeclaration(x, DICT);
         }
         else if (x.type === "ExpressionStatement"){
             ExpressionStatement(x, DICT);
