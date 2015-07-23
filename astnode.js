@@ -33,7 +33,7 @@ var VariableDeclarator = function (node){
             elem.init.callee.object.name === "enyo" &&
             elem.init.callee.property.name === "clone"
           ){
-            console.log("\nSKIP clone in Variabledeclarator");
+            console.warn("\nSKIP clone in Variabledeclarator");
             value = elem.init.arguments[0].name;
             return null;
         }
@@ -125,7 +125,7 @@ var process_lhs = function(node){
         return MemberExpression(node);
     }
     else{
-        console.log("UNKNOWN LHS in AssignmentExpression: "+ node);
+        console.warn("UNKNOWN LHS in AssignmentExpression: "+ node);
     }
 }
 
@@ -158,6 +158,13 @@ var MemberExpression = function(node){
     else if(node.object.type === "MemberExpression"){
         str = MemberExpression(node.object);
     }
+    else if(node.object.type === "CallExpression"){
+        console.warn("NOT IMPLEMENTED MemberExpression type: "+ JSON.stringify(node.object.type));
+        str = node.object.callee.name;
+    }
+    else {
+        console.warn("Unknown MemberExpression type: "+ JSON.stringify(node.object.type));
+    }
 
     str = str + "."+ node.property.name;
     
@@ -176,8 +183,8 @@ var CallExpression = function(node,DICT){
         var comp = process_lib_mixin(node);
         var refs = resolve_refs(comp[1], DICT.VARNAMES);
 
-        console.log("comp: "+ comp);
-        console.log("Resolved Refs: "+refs);
+        console.warn("comp: "+ comp);
+        console.warn("Resolved Refs: "+refs);
         
         //DICT.COMPARE = refs;
         if(DICT.VARNAMES[comp[0]] === undefined){ DICT.VARNAMES[comp[0]]=[];}
@@ -185,17 +192,34 @@ var CallExpression = function(node,DICT){
 
         if(global.DICT[global.current_object][comp[0]] === undefined) {global.DICT[global.current_object][comp[0]]=[] };
         for(var i in refs){
-            console.log("elem Resolved Refs: "+refs[i]);
+            console.warn("elem Resolved Refs: "+refs[i]);
             global.DICT[global.current_object][comp[0]].push(refs[i]);
         }
     }
     else if (node.callee &&
             node.callee.type === "FunctionExpression"){
 
-        FunctionExpression(node.callee, global.DICT);
+            var temp = FunctionExpression(node.callee, global.DICT);
+    }
+    else if(node.callee && 
+            node.callee.type === "MemberExpression"){
+
+            console.warn("UNKNOWN callee. Process the argument for function: " + MemberExpression(node.callee));
+            console.warn("process argument: " + JSON.stringify(node.arguments));
+
+            for(var i in node.arguments){
+                //console.log(node.arguments[i]);
+                console.log("=============");
+                if(node.arguments[i].type === "MemberExpression"){
+                    console.log("MemberExpression:"+ MemberExpression(node.arguments[i]));
+                    var temp = MemberExpression(node.arguments[i]);
+                    DICT.VERIFY.push(temp);
+                }
+            }
+
     }
     else {
-        console.log("\nSKIPPED UNKNOWN  CallExpression: "+ JSON.stringify(node));
+        console.warn("\nSKIPPED UNKNOWN  CallExpression: "+ JSON.stringify(node));
     }
 
 
@@ -203,7 +227,7 @@ var CallExpression = function(node,DICT){
 
 var AssignmentExpression = function(node, DICT){
 
-    //console.log("\n Processing AssignMentExpression: "+ JSON.stringify(node))
+    //console.warn("\n Processing AssignMentExpression: "+ JSON.stringify(node))
 
     var left = process_lhs(node.left);
     var right = null;
@@ -246,11 +270,11 @@ var AssignmentExpression = function(node, DICT){
     else if( node.right.type === "FunctionExpression"){
         
         var tright = FunctionExpression(node, global.DICT);
-        right = [left, tright];
+        right = [left, tright.RETURN_TYPE];
     }
 
     else{
-        console.log("\nSKIPPED UNKNOWN AssignmentExpression: "+ JSON.stringify(node));
+        console.warn("\nSKIPPED UNKNOWN AssignmentExpression: "+ JSON.stringify(node));
         return null;
     }
 
@@ -317,7 +341,7 @@ var UPDATE_GLOBAL = function(left, right){
 
 var ExpressionStatement = function(node, DICT){
 
-    //console.log("In ExpressionStatement: "+ JSON.stringify(node));
+    //console.warn("In ExpressionStatement: "+ JSON.stringify(node));
 
     if(node.expression.type === "AssignmentExpression" && node.expression.operator === "="){
         AssignmentExpression(node.expression, DICT);
@@ -329,7 +353,7 @@ var ExpressionStatement = function(node, DICT){
     }
 
     else{
-        console.log("SKIPPED UNKNOWN  ExpressionStatement: "+ node.expression.type);
+        console.warn("SKIPPED UNKNOWN  ExpressionStatement: "+ node.expression.type);
     }
 }
 
@@ -373,7 +397,8 @@ var ObjectExpression = function (properties, type, type_set){
                 RESET_SCOPE(temp);
             }
             else if (object.value && object.value.type==="FunctionExpression"){
-                var return_type = FunctionExpression(object.value, global.DICT);
+                var _return = FunctionExpression(object.value, global.DICT);
+                var return_type = _return.RETURN_TYPE;
                 for(j in return_type){
                     type_set.push(type + "." + return_type[j]);
                 }
@@ -382,14 +407,23 @@ var ObjectExpression = function (properties, type, type_set){
             }
             else if (object.value && object.value.type==="MemberExpression"){
                 var literal = MemberExpression(object.value);
-                console.log("Replaced MemberExpression " + literal + " with the string/type Literal");
+                console.warn("Replaced MemberExpression " + literal + " with the string/type Literal");
                 type = type + "." + "Literal";
                 type_set.push(type);
-
-                global.DICT[global.current_object][name] = type; //update object scope, for this.xxx
+                
+                /*
+                //console.log("++++++ReturnStatement ObjectExpression current_object "+ global.current_object);
+                if (global.DICT[global.current_object]){
+                    global.DICT[global.current_object][name] = type; //update object scope, for this.xxx
+                } else{
+                    console.warn('SCOPE %s UNDEFINED', global.current_object);
+                    global.DICT["ANONYMOUS"]= []; //update object scope, for this.xxx
+                    global.DICT["ANONYMOUS"].push(type); //update object scope, for this.xxx
+                }
+                */
             }
             else {
-                console.log("\nSKIPPED UNKNOWN ObjectExpression: "+ JSON.stringify(object));
+                console.warn("\nSKIPPED UNKNOWN ObjectExpression: "+ JSON.stringify(object));
             }
             type = default_type; //reset type
         }
@@ -470,8 +504,8 @@ var is_subset = function (arr1, arr2){
     }
     
     if(msg){
-        console.log("Types not found: "+msg);
-        console.log("In Object: "+arr2);
+        console.warn("Types not found: "+msg);
+        console.warn("In Object: "+arr2);
         return msg;
     }
 
@@ -496,13 +530,27 @@ var ReturnStatement= function(node, DICT){
                     key_type = arr.join('.');// nOpts.events ==> OBJECT.events
                     DICT.RETURN_TYPE.push(key_type + '.'+ DICT.VARNAMES[key]);
                 }else{
-                    console.log("Failed to find a match for variable in ReturnStatement");
+                    console.warn("Failed to find a match for variable in ReturnStatement");
                 }
             }
         }
     }
+    else if (node.argument && node.argument.type === "ObjectExpression"){
+        var t = [];
+        //var temp = SET_SCOPE(node)
+        //ObjectExpression(node.right.properties, "OBJECT", t);
+        //console.log("ReturnStatement ObjectExpression current_object "+ global.current_object); 
+        ObjectExpression(node.argument.properties, "OBJECT", t);
+        right = t;
+        //console.log("RETURN: " + JSON.stringify(right));
+        for (var key in right){
+            //console.log(right[key]);
+            DICT.RETURN_TYPE.push(right[key]);
+        }
+        //RESET_SCOPE(temp);
+    }
     else{
-        console.log("SKIPPED UNKNOWN ReturnStatement: "+ JSON.stringify(node));
+        console.warn("SKIPPED UNKNOWN ReturnStatement: "+ JSON.stringify(node));
     }
 
 }
@@ -545,12 +593,13 @@ var FunctionExpression= function(node, GLOBALDICT){
     DICT.SCRATCH = {};
     DICT.UPPER="UNDEFINED";
     DICT.RETURN_TYPE = [];
+    DICT.VERIFY = [];
 
     var prev = SET_FUNCTION_SCOPE(node, GLOBALDICT, DICT);
 
-    //console.log("FunctionExpression: "+JSON.stringify(node));
+    //console.warn("FunctionExpression: "+JSON.stringify(node));
     for(var i = 0; i < node.body.body.length; i += 1){
-        //console.log("FunctionExpression: "+JSON.stringify(node.body.body[i]));
+        //console.warn("FunctionExpression: "+JSON.stringify(node.body.body[i]));
         var x = node.body.body[i];
 
 
@@ -564,7 +613,7 @@ var FunctionExpression= function(node, GLOBALDICT){
             ReturnStatement(x, DICT);
         }
         else{
-            console.log("\nSKIPPED UNKNOWN NODE In FunctionExpression TYPE: "+ JSON.stringify(x)+"\n");
+            console.warn("\nSKIPPED UNKNOWN NODE In FunctionExpression TYPE: "+ JSON.stringify(x)+"\n");
         }
         
         //if(x.type === "FunctionExpression"){
@@ -573,11 +622,45 @@ var FunctionExpression= function(node, GLOBALDICT){
     }
 
     GLOBALDICT["FUNC_"+node.body.range[0]+"_"+node.body.range[1]] = DICT;
+    DICT["IDENTIFIER"] = "FUNC_"+node.body.range[0]+"_"+node.body.range[1];
 
     RESET_FUNCTION_SCOPE(prev);
 
-    //return DICT;
-    return DICT.RETURN_TYPE;
+    return DICT;
+    //return DICT.RETURN_TYPE;
+}
+
+var FunctionDeclaration= function(node, GLOBALDICT){
+
+    //console.warn("NOT IMPLEMENTED: "+ node.type);
+/*
+    var DICT={};
+    DICT.VARNAMES = {};
+    DICT.SCRATCH = {};
+    DICT.UPPER="UNDEFINED";
+    DICT.RETURN_TYPE = [];
+
+    var prev = SET_FUNCTION_SCOPE(node, GLOBALDICT, DICT);
+
+    console.warn("NOT IMPLEMENTED: "+ JSON.stringify(node));
+
+    for(var i = 0; i < node.body.body.length; i += 1){
+
+    }
+*/
+    var func_name = node.id.name;
+
+    var _return = FunctionExpression(node, GLOBALDICT);
+    var func_return = _return.RETURN_TYPE;
+
+    console.warn("FunctionDeclaration return value: "+ JSON.stringify(func_return));
+
+    if(GLOBALDICT[global.current_scope][func_name]){
+        console.warn("Overwriting existing value for %s in scope %s", func_name, global.current_scope);
+    }
+    
+    GLOBALDICT[global.current_scope][func_name]=_return.IDENTIFIER;
 }
 
 exports.ExpressionStatement = ExpressionStatement;
+exports.FunctionDeclaration = FunctionDeclaration;

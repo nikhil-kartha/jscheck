@@ -13,8 +13,11 @@ global.DICT={};
 global.DICT.VARNAMES = {};
 global.DICT.RETURN_TYPE = [];
 global.DICT.UPPER="NULL";
+
 global.current_function = "MODULE_"+filename;  // This is for function scope
 global.current_object = "MODULE_"+filename;   //"ROOTOBJECT";
+global.current_scope = "MODULE_"+filename;   //either, global.current_function or global.current_object
+global.DICT[global.current_scope]={};
 
 var AST = esprima.parse(content, { tolerant: true, loc: true, range: true });
 var SCOPES = escope.analyze(AST).scopes;
@@ -27,11 +30,15 @@ for(var i in program_body){
         astnode.ExpressionStatement(body, global.DICT);
 
     }
+    else if( body.type === "FunctionDeclaration"){ 
+        astnode.FunctionDeclaration(body, global.DICT);
+    }
+
     else{
-        console.log("PROGRAM BODY. SKIPPED UNKNOWN NODE TYPE: "+ body.type);
+        console.warn("PROGRAM BODY. SKIPPED UNKNOWN NODE TYPE: "+ body.type);
     }
 }
 
-console.log("\nGLOBAL DICT: "+JSON.stringify(global.DICT));
+console.warn("\nGLOBAL DICT: "+JSON.stringify(global.DICT));
 
 typeinfo.typechecker(SCOPES);

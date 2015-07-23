@@ -1,0 +1,2 @@
+#!/bin/bash
+nodejs symtab.js jssample/drag.js 2> error.log | tee info.log
